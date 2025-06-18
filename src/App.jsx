@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import PokerTable from './PokerTable'
+import Homepage from './CardGamesHomepage'
 
 function App() {
   const [cards, setCards] = useState([])
@@ -164,6 +165,7 @@ function App() {
 
   return (
     <div className="">
+      <Homepage/>
       <PokerTable />
     </div>
   )
