@@ -3,21 +3,21 @@ export default function Card({ card = null, revealed = false }) {
 
   return (
     <div className={`
-      relative w-14 h-20 md:w-16 md:h-22 rounded-md shadow-md
+      relative w-6 h-8 md:w-7 md:h-9 rounded-xs shadow-xs
       flex flex-col items-center justify-between overflow-hidden
       border ${revealed ? 'border-gray-200 bg-white' : 'border-blue-800 bg-blue-900'}
-      transition-all duration-200
+      transition-all duration-200 text-[6px]
     `}>
       {revealed && card ? (
         <>
-          <div className={`text-xs self-start font-bold px-1 ${isRedCard ? 'text-red-500' : 'text-black'}`}>
-            {card.rank}
+          <div className={`absolute top-0 left-0 font-bold pl-0.5 ${isRedCard ? 'text-red-500' : 'text-black'}`}>
+            {card.rank.length > 1 ? 'T' : card.rank} {/* Abrevia 10 para T */}
           </div>
-          <div className={`text-2xl ${isRedCard ? 'text-red-500' : 'text-black'}`}>
+          <div className={`text-xs ${isRedCard ? 'text-red-500' : 'text-black'} mt-0.5`}>
             {card.suit}
           </div>
-          <div className={`text-xs self-end rotate-180 font-bold px-1 ${isRedCard ? 'text-red-500' : 'text-black'}`}>
-            {card.rank}
+          <div className={`absolute bottom-0 right-0 rotate-180 font-bold pr-0.5 ${isRedCard ? 'text-red-500' : 'text-black'}`}>
+            {card.rank.length > 1 ? 'T' : card.rank}
           </div>
         </>
       ) : (

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import BettingArea from './BettingArea';
-import HandGenerator from './HandGenerator';
 import PokerTableSurface from './PokerTableSurface';
 import { generateRandomCard, evaluatePokerHand, getStageName } from './pokerLogic';
 
@@ -11,6 +10,49 @@ function PokerTable() {
   const [chips, setChips] = useState(1000);
   const [bet, setBet] = useState(0);
   const [gameStage, setGameStage] = useState('pre-flop');
+
+  const getRevealedCount = () => {
+    switch(gameStage) {
+      case 'pre-flop': return 0;
+      case 'flop': return 3;
+      case 'turn': return 4;
+      case 'river': 
+      case 'showdown': return 5;
+      default: return 0;
+    }
+  };
+
+  const getStageControls = () => {
+    if (gameStage === 'showdown') return null;
+    
+    return (
+      <button
+        onClick={nextStage}
+        className="px-3 py-1 text-xs rounded font-medium bg-green-600 hover:bg-green-700 text-white"
+      >
+        {gameStage === 'pre-flop' ? 'Flop' : 
+         gameStage === 'flop' ? 'Turn' : 
+         gameStage === 'turn' ? 'River' : 
+         'Resultado'}
+      </button>
+    );
+  };
+
+  const getStageIndicator = () => {
+    const stages = ['pre-flop', 'flop', 'turn', 'river', 'showdown'];
+    return (
+      <div className="flex space-x-1">
+        {stages.map((stage, index) => (
+          <div 
+            key={stage}
+            className={`h-1 w-6 rounded-full ${
+              stages.indexOf(gameStage) >= index ? 'bg-amber-400' : 'bg-gray-600'
+            }`}
+          />
+        ))}
+      </div>
+    );
+  };
 
   const startNewHand = () => {
     if (bet <= 0 || bet > chips) return;
@@ -27,32 +69,24 @@ function PokerTable() {
     
     switch(gameStage) {
       case 'pre-flop':
-        // Revela o Flop (3 cartas)
         newCommunityCards[0] = generateRandomCard();
         newCommunityCards[1] = generateRandomCard();
         newCommunityCards[2] = generateRandomCard();
         setGameStage('flop');
         break;
-        
       case 'flop':
-        // Revela o Turn (1 carta)
         newCommunityCards[3] = generateRandomCard();
         setGameStage('turn');
         break;
-        
       case 'turn':
-        // Revela o River (1 carta)
         newCommunityCards[4] = generateRandomCard();
         setGameStage('river');
         break;
-        
       case 'river':
-        // Mostra o resultado
         setGameStage('showdown');
         const allCards = [...playerCards, ...newCommunityCards];
         setHandRank(evaluatePokerHand(allCards));
         break;
-        
       default:
         break;
     }
@@ -71,6 +105,7 @@ function PokerTable() {
     setCommunityCards(Array(5).fill(null));
     setHandRank('');
     setBet(0);
+    setChips(1000);
     setGameStage('pre-flop');
   };
 
@@ -84,21 +119,21 @@ function PokerTable() {
       }
       chips={chips}
       onReset={resetGame}
+      playerCards={playerCards}
+      communityCards={communityCards}
+      handRank={handRank}
+      gameStage={gameStage}
+      onStartHand={startNewHand}
+      onNextStage={nextStage}
+      revealedCount={getRevealedCount()}
+      stageControls={getStageControls()}
+      stageIndicator={getStageIndicator()}
     >
       <BettingArea 
         bet={bet} 
         chips={chips}
         onBet={placeBet}
         disabled={gameStage !== 'pre-flop'}
-      />
-      
-      <HandGenerator 
-        playerCards={playerCards}
-        communityCards={communityCards}
-        handRank={handRank}
-        gameStage={gameStage}
-        onStartHand={startNewHand}
-        onNextStage={nextStage}
       />
     </PokerTableSurface>
   );
