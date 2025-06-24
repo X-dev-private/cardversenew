@@ -1,4 +1,4 @@
-import { getStageName } from './pokerLogic';
+import { getStageName } from '../../pokerLogic';
 
 const StageLogic = ({ gameStage, onNextStage }) => {
   const getRevealedCount = () => {

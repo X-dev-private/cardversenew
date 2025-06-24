@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import BettingArea from './BettingArea';
-import PokerTableSurface from './PokerTableSurface';
-import { generateRandomCard, evaluatePokerHand, getStageName } from './pokerLogic';
+import BettingArea from '../Components/poker/BettingArea';
+import PokerTableSurface from '../Components/poker/PokerTableSurface';
+import { generateRandomCard, evaluatePokerHand, getStageName } from '../pokerLogic';
 
 function PokerTable() {
   const [playerCards, setPlayerCards] = useState([]);

@@ -1,13 +1,22 @@
 import { useState } from 'react';
+import { useChips } from '../../ChipsContext'
 
-export default function BettingArea({ bet, chips, onBet }) {
+export default function BettingArea({ bet, onBet }) {
+  const { chips, removeChips } = useChips();
   const [customBet, setCustomBet] = useState('');
   const [isCustomInput, setIsCustomInput] = useState(false);
+
+  const handleBet = (amount) => {
+    if (amount > 0 && amount <= chips) {
+      onBet(amount);
+      removeChips(amount);
+    }
+  };
 
   const handleCustomBet = () => {
     const amount = parseInt(customBet);
     if (!isNaN(amount) && amount > 0 && amount <= chips) {
-      onBet(amount);
+      handleBet(amount);
       setCustomBet('');
       setIsCustomInput(false);
     }
@@ -20,7 +29,7 @@ export default function BettingArea({ bet, chips, onBet }) {
         {[10, 25, 50, 100].map((amount) => (
           <button
             key={amount}
-            onClick={() => onBet(amount)}
+            onClick={() => handleBet(amount)}
             disabled={chips < amount}
             className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
               bet === amount
