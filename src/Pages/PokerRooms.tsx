@@ -5,12 +5,28 @@ import { useChips } from '../ChipsContext';
 function PokerRooms() {
   const navigate = useNavigate();
   const { chips, cvTokens } = useChips();
+  
+  // Contador para IDs numéricos simples
+  const [nextRoomId, setNextRoomId] = useState(3); // Começa em 3 porque já temos 2 salas iniciais
+
+  // Salas iniciais com IDs numéricos simples
   const [rooms, setRooms] = useState([
-    { id: 1, name: 'Mesa Alta', players: 4, maxPlayers: 6, blinds: '100/200', buyIn: 5000 },
-    { id: 2, name: 'Torneio Iniciante', players: 2, maxPlayers: 9, blinds: '10/20', buyIn: 1000 },
-    { id: 3, name: 'Cash Game', players: 5, maxPlayers: 8, blinds: '50/100', buyIn: 3000 },
-    { id: 4, name: 'VIP Lounge', players: 3, maxPlayers: 6, blinds: '500/1000', buyIn: 20000 },
-    { id: 5, name: 'No Limit Texas', players: 7, maxPlayers: 10, blinds: '25/50', buyIn: 2000 },
+    { 
+      id: 1, // ID numérico simples
+      name: 'Mesa Alta', 
+      players: 4, 
+      maxPlayers: 6, 
+      blinds: '100/200', 
+      buyIn: 5000 
+    },
+    { 
+      id: 2, // ID numérico simples
+      name: 'Torneio Iniciante', 
+      players: 2, 
+      maxPlayers: 9, 
+      blinds: '10/20', 
+      buyIn: 1000 
+    }
   ]);
 
   const [newRoomName, setNewRoomName] = useState('');
@@ -18,14 +34,14 @@ function PokerRooms() {
   const [newRoomBuyIn, setNewRoomBuyIn] = useState(1000);
 
   const joinRoom = (roomId) => {
-    navigate('/poker');
+    navigate(`/poker-table/${roomId}`);
   };
 
   const createRoom = () => {
     if (!newRoomName.trim()) return;
     
     const newRoom = {
-      id: rooms.length + 1,
+      id: nextRoomId, // Usando o próximo ID numérico
       name: newRoomName,
       players: 1,
       maxPlayers: 6,
@@ -34,12 +50,14 @@ function PokerRooms() {
     };
     
     setRooms([...rooms, newRoom]);
+    setNextRoomId(nextRoomId + 1); // Incrementa o contador de IDs
     setNewRoomName('');
+    joinRoom(newRoom.id);
   };
 
   return (
     <div className="min-h-screen bg-green-900 text-white">
-      {/* Header atualizado com ambas as moedas */}
+      {/* Header */}
       <header className="bg-gray-900 border-b border-gray-700">
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -50,13 +68,11 @@ function PokerRooms() {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* Saldo de CV Tokens */}
             <div className="flex items-center space-x-2 bg-gray-800 px-3 py-2 rounded-lg">
               <div className="w-5 h-5 bg-purple-500 rounded-full"></div>
               <span className="font-medium">{cvTokens.toLocaleString()} CV</span>
             </div>
             
-            {/* Saldo de Fichas */}
             <div className="flex items-center space-x-2 bg-gray-800 px-3 py-2 rounded-lg">
               <div className="w-5 h-5 bg-amber-400 rounded-full"></div>
               <span className="font-medium">{chips.toLocaleString()} Fichas</span>
@@ -77,10 +93,12 @@ function PokerRooms() {
             <div 
               key={room.id} 
               className="bg-gray-800 rounded-lg p-4 border border-amber-400 hover:border-amber-300 transition-colors cursor-pointer"
-              onClick={() => joinRoom(room.id)}
             >
               <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-bold text-amber-400">{room.name}</h2>
+                <div>
+                  <h2 className="text-xl font-bold text-amber-400">{room.name}</h2>
+                  <p className="text-xs text-gray-400">ID: {room.id}</p>
+                </div>
                 <span className="bg-green-700 text-xs px-2 py-1 rounded">
                   {room.players}/{room.maxPlayers} jogadores
                 </span>
@@ -99,10 +117,7 @@ function PokerRooms() {
               
               <button 
                 className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-2 px-4 rounded transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  joinRoom(room.id);
-                }}
+                onClick={() => joinRoom(room.id)}
               >
                 Entrar
               </button>
