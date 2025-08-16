@@ -12,16 +12,20 @@ export default function PokerTableSurface({
   onNextStage,
   revealedCount,
   stageControls,
-  stageIndicator
+  stageIndicator,
+  players = [],
+  maxPlayers = 9
 }) {
   const [playerPosition, setPlayerPosition] = useState(0);
 
   const handlePositionChange = (newPosition) => {
-    setPlayerPosition(newPosition);
+    const positionIsEmpty = !players.some((_, index) => index === newPosition);
+    if (positionIsEmpty) {
+      setPlayerPosition(newPosition);
+    }
   };
 
-  // Positions array for 10 players (0-9 representing positions 1-10)
-  const positions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const allPositions = Array.from({ length: maxPlayers }, (_, i) => i);
 
   return (
     <div className="min-h-screen p-4 md:p-8 relative overflow-hidden bg-gray-900 flex flex-col">
@@ -47,14 +51,16 @@ export default function PokerTableSurface({
                   key={`community-${index}`}
                   className="w-10 h-14 rounded-md shadow-md flex items-center justify-center border border-gray-200 bg-white"
                 >
-                  <div className="flex flex-col items-center">
-                    <span className={`text-xs font-bold ${['♥','♦'].includes(card.suit) ? 'text-red-500' : 'text-black'}`}>
-                      {card.rank}
-                    </span>
-                    <span className={`text-lg ${['♥','♦'].includes(card.suit) ? 'text-red-500' : 'text-black'}`}>
-                      {card.suit}
-                    </span>
-                  </div>
+                  {card && (
+                    <div className="flex flex-col items-center">
+                      <span className={`text-xs font-bold ${['♥','♦'].includes(card.suit) ? 'text-red-500' : 'text-black'}`}>
+                        {card.rank}
+                      </span>
+                      <span className={`text-lg ${['♥','♦'].includes(card.suit) ? 'text-red-500' : 'text-black'}`}>
+                        {card.suit}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -72,24 +78,28 @@ export default function PokerTableSurface({
               Reiniciar
             </button>
 
-            {/* Player positions arranged in a perfect circle */}
-            {positions.map((pos) => {
-              // Calculate angle for 10 positions (36° each)
-              const angle = (pos * 36) * (Math.PI / 180);
-              
+            {/* All positions arranged in a circle */}
+            {allPositions.map((pos) => {
+              const angle = (pos * (360 / maxPlayers)) * (Math.PI / 180);
+              const distance = 40;
+              const playerAtPosition = players[pos];
+              const isOccupied = !!playerAtPosition;
+              const isCurrent = pos === playerPosition;
+
               return (
                 <div 
-                  key={pos}
-                  className="absolute w-24 h-20 flex flex-col items-center justify-center group cursor-pointer"
+                  key={`position-${pos}`}
+                  className={`absolute w-24 h-24 flex flex-col items-center justify-center group 
+                    ${isOccupied ? 'cursor-default' : 'cursor-pointer'}`}
                   style={{
-                    top: `${50 + 40 * Math.sin(angle)}%`,
-                    left: `${50 + 40 * Math.cos(angle)}%`,
+                    top: `${50 + distance * Math.sin(angle)}%`,
+                    left: `${50 + distance * Math.cos(angle)}%`,
                     transform: 'translate(-50%, -50%)'
                   }}
-                  onClick={() => handlePositionChange(pos)}
+                  onClick={() => !isOccupied && handlePositionChange(pos)}
                 >
-                  {/* Player cards */}
-                  {pos === playerPosition && playerCards.length > 0 && (
+                  {/* Player cards (only show if it's the current player position) */}
+                  {isCurrent && playerCards.length > 0 && (
                     <div className="flex mb-1">
                       {playerCards.map((card, index) => (
                         <div 
@@ -108,13 +118,47 @@ export default function PokerTableSurface({
                       ))}
                     </div>
                   )}
-                  <div className={`w-10 h-10 ${pos === playerPosition ? 'bg-amber-600/90' : 'bg-[#0a5c36]/90'} rounded-full border-2 border-amber-600 
-                    shadow-md flex items-center justify-center hover:scale-110 transition-transform duration-200`}>
-                    <div className="w-3 h-3 bg-amber-400 rounded-full"></div>
+
+                  {/* Position marker */}
+                  <div className={`w-10 h-10 rounded-full border-2 shadow-md flex items-center justify-center 
+                    ${isCurrent ? 'bg-amber-600/90 border-amber-600' : 
+                      isOccupied ? 'bg-[#0a5c36]/90 border-amber-600' : 
+                      'border-dashed border-gray-400/50 bg-transparent'}
+                    hover:scale-110 transition-transform duration-200 relative`}>
+                    
+                    {isOccupied ? (
+                      <>
+                        {/* Player avatar/icon */}
+                        <div className="w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center text-xs font-bold">
+                          {playerAtPosition.name.charAt(0)}
+                        </div>
+                        
+                        {/* Fold indicator */}
+                        {playerAtPosition.folded && (
+                          <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 rounded-full">
+                            Fold
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-3 h-3 rounded-full bg-gray-400/30"></div>
+                    )}
                   </div>
-                  <span className={`text-xs ${pos === playerPosition ? 'text-amber-300 font-bold' : 'text-white'} opacity-0 group-hover:opacity-100 transition-opacity mt-1`}>
-                    Posição {pos + 1}
+
+                  {/* Position info */}
+                  <span className={`text-xs mt-1 
+                    ${isCurrent ? 'text-amber-300 font-bold' : 
+                      isOccupied ? 'text-white' : 'text-gray-400'}
+                    opacity-0 group-hover:opacity-100 transition-opacity`}>
+                    {isOccupied ? playerAtPosition.name : `Posição ${pos + 1}`}
                   </span>
+
+                  {/* Chips display for occupied positions */}
+                  {isOccupied && (
+                    <div className="absolute -bottom-5 bg-amber-900/80 px-2 py-0.5 rounded text-xs text-yellow-100 font-mono whitespace-nowrap">
+                      ${playerAtPosition.chips}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -122,7 +166,7 @@ export default function PokerTableSurface({
             {/* Chips area */}
             <div className="absolute top-3 right-3 z-10 bg-amber-900/80 p-2 rounded-lg 
               text-center border border-amber-500 shadow-md min-w-[110px] backdrop-blur-sm">
-              <p className="text-amber-200 text-xs uppercase tracking-wider">Fichas</p>
+              <p className="text-amber-200 text-xs uppercase tracking-wider">Suas Fichas</p>
               <p className="text-yellow-200 font-bold text-lg font-mono">
                 ${chips.toLocaleString()}
               </p>
@@ -143,12 +187,12 @@ export default function PokerTableSurface({
           {/* Combined Game State and Hand Result area */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[180%] w-full max-w-md z-20">
             <div className="flex flex-col items-center space-y-3">
-              {/* Stage indicator - now always visible */}
+              {/* Stage indicator */}
               <div className="w-full flex justify-center">
                 {stageIndicator}
               </div>
               
-              {/* Hand result - appears when available */}
+              {/* Hand result */}
               {handRank && (
                 <div className="text-center">
                   <div className="inline-block bg-gray-800/90 px-3 py-1 rounded border border-amber-500/50 shadow-sm">
@@ -160,7 +204,7 @@ export default function PokerTableSurface({
             </div>
           </div>
 
-          {/* Poker action buttons (replacing the old betting area) */}
+          {/* Poker action controls */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-[40%] w-full max-w-md z-20 mt-16">
             <div className="flex flex-col items-center space-y-3">
               <div className="flex justify-center gap-2">
@@ -183,8 +227,8 @@ export default function PokerTableSurface({
           </div>
         </div>
 
-        {/* New betting area below the table */}
-        <div className="w-full h-20 flex items-center justify-center px-2 mt-2">
+        {/* Betting area and player actions */}
+        <div className="w-full h-24 flex items-center justify-center px-2 mt-2">
           <div className="w-full max-w-3xl mx-auto">
             {children}
           </div>

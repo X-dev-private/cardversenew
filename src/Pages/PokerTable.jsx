@@ -1,43 +1,51 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useChips } from '../ChipsContext';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BettingArea from '../Components/poker/BettingArea';
 import PokerTableSurface from '../Components/poker/PokerTableSurface';
+import Player from '../Components/player/Player';
 import { generateRandomCard, evaluatePokerHand, getStageName } from '../pokerLogic';
 
 function PokerTable() {
-  const { roomId } = useParams();
   const navigate = useNavigate();
-  const { chips: initialChips, deductChips, addChips } = useChips();
-  
-  const [room, setRoom] = useState(null);
   const [playerCards, setPlayerCards] = useState([]);
   const [communityCards, setCommunityCards] = useState(Array(5).fill(null));
   const [handRank, setHandRank] = useState('');
-  const [chips, setChips] = useState(initialChips);
+  const [chips, setChips] = useState(1000);
   const [bet, setBet] = useState(0);
   const [gameStage, setGameStage] = useState('pre-flop');
-  const [players, setPlayers] = useState([]);
-  const [pot, setPot] = useState(0);
+  const [players, setPlayers] = useState([
+    { id: '1', name: 'Alice', chips: 1000, cards: [] },
+    { id: '2', name: 'Bob', chips: 1000, cards: [] },
+    { id: '3', name: 'Você', chips: 1000, cards: [], isCurrentPlayer: true }
+  ]);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
-  // Carregar dados da sala (simulado)
-  useEffect(() => {
-    // Em uma aplicação real, você buscaria os dados da sala da API
-    const loadedRoom = {
-      id: roomId,
-      name: roomId === '1' ? 'Mesa Alta' : 'Torneio Iniciante',
-      blinds: roomId === '1' ? '100/200' : '10/20',
-      buyIn: roomId === '1' ? 5000 : 1000,
-      maxPlayers: 6,
-      players: [
-        { id: '1', name: 'Jogador 1', chips: 10000 },
-        { id: '2', name: 'Você', chips: initialChips }
-      ]
+  // Encontra o jogador atual (Você)
+  const currentPlayer = players.find(player => player.isCurrentPlayer);
+
+  // Funções para gerenciar jogadores
+  const addPlayer = () => {
+    const newPlayerId = String(players.length + 1);
+    const newPlayer = {
+      id: newPlayerId,
+      name: `Jogador ${newPlayerId}`,
+      chips: 1000,
+      cards: [],
+      folded: false
     };
+    setPlayers([...players, newPlayer]);
+  };
+
+  const removePlayer = (playerId) => {
+    if (players.length <= 2) return; // Mantém pelo menos 2 jogadores
+    if (players.find(p => p.id === playerId)?.isCurrentPlayer) return; // Não remove o jogador atual
     
-    setRoom(loadedRoom);
-    setPlayers(loadedRoom.players);
-  }, [roomId, initialChips]);
+    setPlayers(players.filter(player => player.id !== playerId));
+  };
+
+  const toggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible);
+  };
 
   const getRevealedCount = () => {
     switch(gameStage) {
@@ -51,12 +59,29 @@ function PokerTable() {
   };
 
   const getStageControls = () => {
-    if (gameStage === 'showdown') return null;
+    if (gameStage === 'showdown') {
+      return (
+        <div className="flex space-x-2">
+          <button
+            onClick={resetGame}
+            className="px-3 py-1 text-xs rounded font-medium bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Nova Mão
+          </button>
+          <button
+            onClick={() => navigate('/Rooms')}
+            className="px-3 py-1 text-xs rounded font-medium bg-gray-600 hover:bg-gray-700 text-white"
+          >
+            Voltar para Salas
+          </button>
+        </div>
+      );
+    }
     
     return (
       <button
         onClick={nextStage}
-        className="px-4 py-2 rounded font-medium bg-green-600 hover:bg-green-700 text-white"
+        className="px-3 py-1 text-xs rounded font-medium bg-green-600 hover:bg-green-700 text-white"
       >
         {gameStage === 'pre-flop' ? 'Flop' : 
          gameStage === 'flop' ? 'Turn' : 
@@ -69,11 +94,11 @@ function PokerTable() {
   const getStageIndicator = () => {
     const stages = ['pre-flop', 'flop', 'turn', 'river', 'showdown'];
     return (
-      <div className="flex space-x-1 mb-4">
+      <div className="flex space-x-1">
         {stages.map((stage, index) => (
           <div 
             key={stage}
-            className={`h-1 w-8 rounded-full ${
+            className={`h-1 w-6 rounded-full ${
               stages.indexOf(gameStage) >= index ? 'bg-amber-400' : 'bg-gray-600'
             }`}
           />
@@ -82,17 +107,27 @@ function PokerTable() {
     );
   };
 
+  const dealCardsToPlayers = () => {
+    const newPlayers = players.map(player => {
+      return {
+        ...player,
+        cards: [generateRandomCard(), generateRandomCard()],
+        folded: false
+      };
+    });
+    setPlayers(newPlayers);
+  };
+
   const startNewHand = () => {
     if (bet <= 0 || bet > chips) return;
     
-    // Deduzir as fichas da aposta inicial
-    deductChips(bet);
-    setPot(bet);
-    
+    dealCardsToPlayers();
     setPlayerCards([generateRandomCard(), generateRandomCard()]);
     setCommunityCards(Array(5).fill(null));
     setGameStage('pre-flop');
     setHandRank('');
+    setChips(chips - bet);
+    setBet(0);
   };
 
   const nextStage = () => {
@@ -116,17 +151,7 @@ function PokerTable() {
       case 'river':
         setGameStage('showdown');
         const allCards = [...playerCards, ...newCommunityCards];
-        const rank = evaluatePokerHand(allCards);
-        setHandRank(rank);
-        
-        // Simular resultado (50% chance de vitória)
-        if (Math.random() > 0.5) {
-          const winnings = pot * 2;
-          addChips(winnings);
-          alert(`Você ganhou! ${rank} - Prêmio: ${winnings} fichas`);
-        } else {
-          alert(`Você perdeu! ${rank}`);
-        }
+        setHandRank(evaluatePokerHand(allCards));
         break;
       default:
         break;
@@ -138,11 +163,13 @@ function PokerTable() {
   const placeBet = (amount) => {
     if (chips >= amount) {
       setBet(amount);
+      setPlayers(players.map(player => 
+        player.isCurrentPlayer 
+          ? { ...player, chips: player.chips - amount } 
+          : player
+      ));
+      setChips(chips - amount);
     }
-  };
-
-  const leaveTable = () => {
-    navigate('/poker-rooms');
   };
 
   const resetGame = () => {
@@ -150,42 +177,142 @@ function PokerTable() {
     setCommunityCards(Array(5).fill(null));
     setHandRank('');
     setBet(0);
-    setPot(0);
     setGameStage('pre-flop');
+    setPlayers(players.map(player => ({
+      ...player,
+      cards: [],
+      folded: false
+    })));
   };
 
-  if (!room) {
-    return <div className="flex justify-center items-center h-screen">Carregando mesa...</div>;
-  }
+  const leaveTable = () => {
+    navigate('/Rooms');
+  };
+
+  const handlePlayerAction = (playerId, action, amount = 0) => {
+    console.log(`Jogador ${playerId} executou ${action} com valor ${amount}`);
+    
+    setPlayers(prevPlayers => prevPlayers.map(player => {
+      if (player.id === playerId) {
+        switch(action) {
+          case 'fold':
+            return { ...player, folded: true };
+          case 'bet':
+          case 'raise':
+          case 'call':
+            return { ...player, chips: player.chips - amount };
+          default:
+            return player;
+        }
+      }
+      return player;
+    }));
+  };
 
   return (
-    <div className="min-h-screen bg-green-900 text-white p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header da Mesa */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-amber-400">{room.name} (ID: {room.id})</h1>
-            <p className="text-gray-300">Blinds: {room.blinds} | Buy-in: ${room.buyIn.toLocaleString()}</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="bg-gray-800 px-4 py-2 rounded-lg">
-              <span className="font-bold text-amber-400">{chips.toLocaleString()}</span> fichas
-            </div>
-            <button 
-              onClick={leaveTable}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition"
+    <div className="flex h-screen">
+      {/* Barra lateral dos jogadores */}
+      {sidebarVisible && (
+        <div className="w-64 bg-gray-800 p-4 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Jogadores</h2>
+            <button
+              onClick={toggleSidebar}
+              className="text-gray-400 hover:text-white"
+              title="Esconder barra lateral"
             >
-              Sair da Mesa
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
             </button>
           </div>
-        </div>
+          
+          {/* Controles de Jogadores */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={addPlayer}
+              disabled={players.length >= 9}
+              className={`px-2 py-1 text-xs rounded-md flex-1 ${
+                players.length >= 9 
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              + Jogador
+            </button>
+            <button
+              onClick={() => removePlayer(players[players.length - 1]?.id)}
+              disabled={players.length <= 2}
+              className={`px-2 py-1 text-xs rounded-md flex-1 ${
+                players.length <= 2
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              - Jogador
+            </button>
+          </div>
 
-        {/* Área do Jogo */}
+          {/* Lista de Jogadores */}
+          <div className="space-y-3">
+            {players.map(player => (
+              <div key={player.id} className="relative bg-gray-700 rounded-lg p-3">
+                <Player
+                  id={player.id}
+                  name={player.name}
+                  initialChips={player.chips}
+                  isCurrentPlayer={player.isCurrentPlayer}
+                  cards={player.cards}
+                  folded={player.folded}
+                  currentBet={player.currentBet}
+                  compactView={true}
+                />
+                {!player.isCurrentPlayer && players.length > 2 && (
+                  <button
+                    onClick={() => removePlayer(player.id)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transform translate-x-1 -translate-y-1"
+                    title="Remover jogador"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Área principal da mesa */}
+      <div className="flex-1 flex flex-col relative">
+        {/* Botão para mostrar/ocultar sidebar */}
+        {!sidebarVisible && (
+          <button
+            onClick={toggleSidebar}
+            className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-2 rounded-r-lg z-10 hover:bg-gray-700 transition-colors"
+            title="Mostrar barra lateral"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+
         <PokerTableSurface 
           header={
             <>
-              <h1 className="text-3xl font-bold text-amber-400">Texas Hold'em</h1>
-              <p className="text-gray-300">Estágio: {getStageName(gameStage)}</p>
+              <div className="flex justify-between items-center w-full">
+                <div>
+                  <h1 className="text-3xl font-bold text-amber-400">Texas Hold'em</h1>
+                  <p className="text-gray-300">Estágio: {getStageName(gameStage)}</p>
+                  {handRank && <p className="text-gray-300">Sua mão: {handRank}</p>}
+                </div>
+                <button 
+                  onClick={leaveTable}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition"
+                >
+                  Voltar para Salas
+                </button>
+              </div>
             </>
           }
           chips={chips}
@@ -199,27 +326,20 @@ function PokerTable() {
           revealedCount={getRevealedCount()}
           stageControls={getStageControls()}
           stageIndicator={getStageIndicator()}
+          players={players} 
         >
-          <BettingArea 
-            bet={bet} 
-            chips={chips}
-            onBet={placeBet}
-            disabled={gameStage !== 'pre-flop'}
-          />
+          {/* Área de Apostas */}
+          {currentPlayer && (
+            <BettingArea 
+              bet={bet} 
+              chips={currentPlayer.chips}
+              onBet={placeBet}
+              disabled={gameStage !== 'pre-flop'}
+              currentPlayerId={currentPlayer.id}
+              onPlayerAction={handlePlayerAction}
+            />
+          )}
         </PokerTableSurface>
-
-        {/* Lista de Jogadores */}
-        <div className="mt-8 bg-gray-800 rounded-lg p-4">
-          <h2 className="text-xl font-bold text-amber-400 mb-4">Jogadores na Mesa</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {players.map(player => (
-              <div key={player.id} className="bg-gray-700 p-3 rounded-lg">
-                <p className="font-bold">{player.name}</p>
-                <p>{player.chips.toLocaleString()} fichas</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
